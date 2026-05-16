@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# uv / 仮想環境
+.venv/
+
+# ChromaDB 永続データ（`uv run python cli.py --ingest` で再生成）
+db/
+
+# 社内文書ドロップフォルダ（実運用では機密。
+# サンプルは `uv run python create_test_docs.py` で生成）
+docs/
+
+# api_client の中間ファイル渡し用一時ファイル
+tmp_prompt.txt
+
+# デバッグ/実行ログ残骸
+stdout*.txt
+stderr*.txt
+debug_*.py
+diag_*.py
+verify_e2e.py
+
+# ローカルエージェント設定（個人設定・認証情報を含みうる）
+.claude/
+
+# OS
+Thumbs.db
+desktop.ini

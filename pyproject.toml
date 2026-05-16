@@ -1,0 +1,15 @@
+[project]
+name = "qe-rag"
+version = "0.1.0"
+description = "社内文書QE-RAGシステム"
+requires-python = ">=3.10"
+dependencies = [
+    "sentence-transformers>=2.7.0",
+    "chromadb>=0.5.0",
+    "python-pptx>=1.0.0",
+    "pdfminer.six>=20221105",
+    "python-docx>=1.1.0",
+    "requests>=2.31.0",
+    "fpdf2>=2.7.0",
+    "transformers==4.57.6",
+]
