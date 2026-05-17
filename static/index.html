@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>社内文書 QE-RAG 検索</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: "Segoe UI", "Meiryo", sans-serif; max-width: 820px;
+         margin: 2rem auto; padding: 0 1rem; line-height: 1.6; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.05rem; margin: 1.2rem 0 .4rem; }
+  h3 { font-size: .95rem; margin: 1rem 0 .3rem; color: #666; }
+  textarea { width: 100%; box-sizing: border-box; font-size: 1rem;
+             padding: .6rem; resize: vertical; }
+  .row { margin: .6rem 0; }
+  button { font-size: 1rem; padding: .55rem 1.1rem; cursor: pointer;
+           border: 0; border-radius: 6px; background: #2563eb; color: #fff; }
+  button.secondary { background: #6b7280; }
+  button:disabled { opacity: .5; cursor: progress; }
+  pre#progress { background: #1116; padding: .7rem; border-radius: 6px;
+                 white-space: pre-wrap; font-size: .85rem; min-height: 1.2rem;
+                 margin: 0; }
+  #answer { white-space: pre-wrap; background: #2563eb14;
+            border-left: 4px solid #2563eb; padding: .8rem 1rem;
+            border-radius: 4px; }
+  #sources { margin: .3rem 0; padding-left: 1.2rem; }
+  #sources li { color: #555; font-size: .9rem; }
+  .err { color: #dc2626; font-weight: 600; }
+  section[hidden] { display: none; }
+</style>
+</head>
+<body>
+  <h1>社内文書 QE-RAG 検索</h1>
+
+  <div class="row">
+    <textarea id="q" rows="2"
+      placeholder="質問を入力（例: 有給休暇の申請方法は？）&#10;Ctrl+Enter で送信"></textarea>
+  </div>
+  <div class="row">
+    <button id="ask">質問する</button>
+    <button id="clear" class="secondary">クリア</button>
+    <button id="ingest" class="secondary">再インデックス（更新・削除も反映）</button>
+    <label style="margin-left:.6rem">
+      <input type="file" id="fileInput" multiple accept=".pptx,.pdf,.docx,.txt,.md" style="display:none">
+      <button id="uploadBtn" class="secondary" onclick="$('fileInput').click()">ファイルを追加</button>
+    </label>
+  </div>
+
+  <section id="progress-box" hidden>
+    <h2>進捗</h2>
+    <pre id="progress"></pre>
+  </section>
+
+  <section id="answer-box" hidden>
+    <h2>回答</h2>
+    <div id="answer"></div>
+    <h3>参照文書</h3>
+    <ul id="sources"></ul>
+  </section>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const askBtn = $("ask"), clearBtn = $("clear"), ingestBtn = $("ingest");
+const uploadBtn = $("uploadBtn"), fileInput = $("fileInput"), qBox = $("q");
+const progressBox = $("progress-box"), progressEl = $("progress");
+const answerBox = $("answer-box"), answerEl = $("answer"), sourcesEl = $("sources");
+
+function setBusy(busy) {
+  askBtn.disabled = busy;
+  ingestBtn.disabled = busy;
+  uploadBtn.disabled = busy;
+}
+
+function logProgress(msg, isErr) {
+  const line = document.createElement(isErr ? "span" : "span");
+  if (isErr) line.className = "err";
+  line.textContent = msg + "\n";
+  progressEl.appendChild(line);
+}
+
+function baseName(p) {
+  return String(p).split(/[\\/]/).filter(Boolean).pop() || p;
+}
+
+function renderSources(sources) {
+  sourcesEl.innerHTML = "";
+  if (!sources || sources.length === 0) {
+    const li = document.createElement("li");
+    li.textContent = "（参照文書なし）";
+    sourcesEl.appendChild(li);
+    return;
+  }
+  for (const s of sources) {
+    const li = document.createElement("li");
+    let label = baseName(s.file);
+    if ("slide" in s) label += `（スライド ${s.slide}）`;
+    else if ("page" in s) label += `（${s.page} ページ）`;
+    li.textContent = label;
+    sourcesEl.appendChild(li);
+  }
+}
+
+// SSE レスポンスを逐次パースして handlers へ渡す共通処理。
+async function consumeSSE(res, handlers) {
+  if (!res.ok) { handlers.onError(`HTTP ${res.status} ${res.statusText}`); return; }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let sep;
+    while ((sep = buf.indexOf("\n\n")) !== -1) {
+      const block = buf.slice(0, sep);
+      buf = buf.slice(sep + 2);
+      const dataLine = block.split("\n").find((l) => l.startsWith("data:"));
+      if (!dataLine) continue;
+      let evt;
+      try { evt = JSON.parse(dataLine.slice(5).trim()); } catch (_) { continue; }
+      if (evt.type === "progress") handlers.onProgress(evt.message);
+      else if (evt.type === "error") handlers.onError(evt.message);
+      else if (evt.type === "done") handlers.onDone(evt);
+    }
+  }
+}
+
+async function streamPost(url, body, handlers) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : "{}",
+  });
+  await consumeSSE(res, handlers);
+}
+
+async function streamUpload(url, formData, handlers) {
+  const res = await fetch(url, { method: "POST", body: formData });
+  await consumeSSE(res, handlers);
+}
+
+function resetView() {
+  progressBox.hidden = false;
+  answerBox.hidden = true;
+  progressEl.textContent = "";
+  answerEl.textContent = "";
+  sourcesEl.innerHTML = "";
+}
+
+async function doAsk() {
+  const question = qBox.value.trim();
+  if (!question) { qBox.focus(); return; }
+  resetView();
+  setBusy(true);
+  try {
+    await streamPost("/api/ask", { question }, {
+      onProgress: (m) => logProgress(m),
+      onError: (m) => logProgress(m, true),
+      onDone: (evt) => {
+        answerBox.hidden = false;
+        answerEl.textContent = evt.answer || "(回答なし)";
+        renderSources(evt.sources);
+      },
+    });
+  } catch (e) {
+    logProgress(String(e), true);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function doIngest() {
+  resetView();
+  setBusy(true);
+  logProgress("文書の再インデックスを開始...");
+  try {
+    await streamPost("/api/ingest", null, {
+      onProgress: (m) => logProgress(m),
+      onError: (m) => logProgress(m, true),
+      onDone: (evt) => logProgress(evt.message || "完了"),
+    });
+  } catch (e) {
+    logProgress(String(e), true);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function doUpload() {
+  const fileList = fileInput.files;
+  if (!fileList || fileList.length === 0) { fileInput.click(); return; }
+  resetView();
+  setBusy(true);
+  logProgress(`${fileList.length} ファイルをアップロード中...`);
+  const fd = new FormData();
+  for (const f of fileList) fd.append("files", f);
+  try {
+    await streamUpload("/api/upload", fd, {
+      onProgress: (m) => logProgress(m),
+      onError: (m) => logProgress(m, true),
+      onDone: (evt) => logProgress(evt.message || "完了"),
+    });
+  } catch (e) {
+    logProgress(String(e), true);
+  } finally {
+    fileInput.value = "";
+    setBusy(false);
+  }
+}
+
+askBtn.addEventListener("click", doAsk);
+clearBtn.addEventListener("click", () => { qBox.value = ""; qBox.focus(); });
+ingestBtn.addEventListener("click", doIngest);
+uploadBtn.addEventListener("click", () => {
+  if (fileInput.files && fileInput.files.length > 0) doUpload();
+  else fileInput.click();
+});
+fileInput.addEventListener("change", () => { if (fileInput.files.length > 0) doUpload(); });
+qBox.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && e.key === "Enter") doAsk();
+});
+</script>
+</body>
+</html>

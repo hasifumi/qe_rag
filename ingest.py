@@ -70,7 +70,17 @@ def _extract(path: str) -> list[dict]:
     return []
 
 
-def ingest(docs_dir: str = config.DOCS_DIR, db_dir: str = config.DB_DIR) -> None:
+def ingest(
+    docs_dir: str = config.DOCS_DIR,
+    db_dir: str = config.DB_DIR,
+    on_progress=None,
+) -> None:
+    """文書を取り込み ChromaDB に登録する
+
+    on_progress: 進捗メッセージを受け取る callable（引数1: str）。
+                 None のとき print（CLI 後方互換）。Web UI は SSE 送出用に渡す。
+    """
+    report = on_progress if on_progress is not None else print
     embedder = SentenceTransformer(config.EMBED_MODEL)
     client = chromadb.PersistentClient(path=db_dir)
     col = client.get_or_create_collection("docs")
@@ -79,7 +89,15 @@ def ingest(docs_dir: str = config.DOCS_DIR, db_dir: str = config.DB_DIR) -> None
         p for p in Path(docs_dir).rglob("*")
         if p.suffix.lower() in (".pptx", ".pdf", ".docx", ".txt", ".md")
     ]
-    print(f"文書ファイル数: {len(doc_files)}")
+    report(f"文書ファイル数: {len(doc_files)}")
+
+    # docs/ から削除されたファイルの ChromaDB エントリを除去
+    present = {str(p) for p in doc_files}
+    all_metas = col.get(include=["metadatas"])["metadatas"]
+    registered = {m["file"] for m in all_metas if m.get("file")}
+    for orphan in registered - present:
+        col.delete(where={"file": orphan})
+        report(f"  削除（docsから消失）: {Path(orphan).name}")
 
     for file_path in doc_files:
         path_str = str(file_path)
@@ -90,7 +108,7 @@ def ingest(docs_dir: str = config.DOCS_DIR, db_dir: str = config.DB_DIR) -> None
         if existing["ids"]:
             stored_mtime = existing["metadatas"][0].get("mtime", "")
             if stored_mtime == mtime:
-                print(f"  スキップ（未変更）: {file_path.name}")
+                report(f"  スキップ（未変更）: {file_path.name}")
                 continue
 
         # 既存エントリを削除して再登録
@@ -98,7 +116,7 @@ def ingest(docs_dir: str = config.DOCS_DIR, db_dir: str = config.DB_DIR) -> None
 
         sections = _extract(path_str)
         if not sections:
-            print(f"  スキップ（テキストなし）: {file_path.name}")
+            report(f"  スキップ（テキストなし）: {file_path.name}")
             continue
 
         ids, docs, metas = [], [], []
@@ -119,6 +137,6 @@ def ingest(docs_dir: str = config.DOCS_DIR, db_dir: str = config.DB_DIR) -> None
         if ids:
             embeddings = embedder.encode(docs).tolist()
             col.add(ids=ids, documents=docs, embeddings=embeddings, metadatas=metas)
-            print(f"  登録: {file_path.name} ({len(ids)} チャンク)")
+            report(f"  登録: {file_path.name} ({len(ids)} チャンク)")
 
-    print("インデックス構築完了")
+    report("インデックス構築完了")

@@ -84,23 +84,29 @@ def generate_answer(question: str, chunks: list[str]) -> str:
     return chat(config.HEAVY_MODEL, prompt)
 
 
-def run(question: str) -> dict:
-    """パイプライン全体を実行して回答と参照情報を返す"""
+def run(question: str, on_progress=None) -> dict:
+    """パイプライン全体を実行して回答と参照情報を返す
+
+    on_progress: 進捗メッセージを受け取る callable（引数1: str）。
+                 None のとき print（CLI 後方互換）。Web UI は SSE 送出用に渡す。
+    """
+    report = on_progress if on_progress is not None else print
+
     _, _, chroma = _get_resources()
     col = chroma.get_or_create_collection("docs")
 
-    print("[1/4] クエリ拡張中...")
+    report("[1/4] クエリ拡張中...")
     queries = expand_query(question)
 
-    print(f"[2/4] 検索中... ({len(queries)} クエリ)")
+    report(f"[2/4] 検索中... ({len(queries)} クエリ)")
     chunks = search(queries, col)
-    print(f"      {len(chunks)} 件取得")
+    report(f"      {len(chunks)} 件取得")
 
-    print("[3/4] リランキング中...")
+    report("[3/4] リランキング中...")
     reranked = rerank(question, chunks)
-    print(f"      {len(reranked)} 件に絞り込み")
+    report(f"      {len(reranked)} 件に絞り込み")
 
-    print("[4/4] 回答生成中...")
+    report("[4/4] 回答生成中...")
     answer = generate_answer(question, reranked)
 
     # 参照文書のメタデータを取得

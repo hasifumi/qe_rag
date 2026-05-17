@@ -20,6 +20,10 @@ uv run python cli.py --ingest
 # 質問実行
 uv run python cli.py "有給休暇の申請方法は？"
 
+# Web UI 起動（ブラウザで http://localhost:8000 を開く）
+# 照会・進捗表示・文書再インデックスを GUI で実行できる。CLI と同じ pipeline/ingest を使う。
+uv run uvicorn webapp:app --port 8000
+
 # パッケージ追加
 uv add <package-name>
 ```
@@ -75,6 +79,7 @@ RAGパラメーター：`TOP_K_SEARCH=10`、`TOP_K_RERANK=3`、`QUERY_EXPAND_N=3
 ## 実装上の注意
 
 - `expand_query()`のLLM出力（JSON配列）は必ずフォールバック処理を入れる（`json.JSONDecodeError`をキャッチして元の質問のみ返す）
+- `ingest` は増分＋削除同期（`docs/` から消えたファイルは ChromaDB 索引からも自動削除）
 - sentence-transformersの初回起動時にモデルダウンロード（約210MB）が必要。社内ネットワークブロックがある場合は事前にオフラインで取得
 - ChromaDBのコレクション名は`"docs"`で固定
 
