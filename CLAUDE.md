@@ -47,9 +47,11 @@ uv add <package-name>
 |---|---|
 | `config.py` | APIエンドポイント・モデル名・パス等の設定値 |
 | `api_client.py` | 改良版APIサーバーのラッパー（`chat(model, prompt, use_file)`） |
-| `ingest.py` | 文書テキスト抽出→チャンク分割→ChromaDB登録 |
+| `ingest.py` | 文書テキスト抽出→チャンク分割→ChromaDB登録（増分＋削除同期） |
 | `pipeline.py` | QE-RAGパイプライン本体（4関数） |
 | `cli.py` | CLIエントリポイント |
+| `webapp.py` | FastAPI Web UI（照会・再インデックス・ファイルアップロード・ファイル一覧） |
+| `static/index.html` | シングルページUI（SSE進捗・回答・ハイライト表示） |
 | `db/` | ChromaDB永続化ディレクトリ |
 | `docs/` | 社内文書フォルダ（pptx/pdf/docx等） |
 
@@ -85,6 +87,7 @@ RAGパラメーター：`TOP_K_SEARCH=10`、`TOP_K_RERANK=3`、`QUERY_EXPAND_N=3
 
 ## 実装フェーズ
 
-- **Phase 1**（優先）：`config.py`→`api_client.py`→`ingest.py`（pptxのみ）→`pipeline.py`→`cli.py`
-- **Phase 2**：pdf/docx対応、増分インデックス更新、メタデータ表示、スコア閾値フィルタ
-- **Phase 3**（オプション）：FastAPI WebUI、LoChaBot（Discord）連携
+- **Phase 1** ✅：`config.py`→`api_client.py`→`ingest.py`→`pipeline.py`→`cli.py`
+- **Phase 2** ✅：pdf/docx対応、増分インデックス更新、削除同期、メタデータ表示
+- **Phase 3** ✅：FastAPI WebUI（照会・進捗SSE・ファイルアップロード・インデックス済みファイル一覧・回答後ハイライト）
+- **Phase 4**（オプション）：LoChaBot（Discord）連携、スコア閾値フィルタ
