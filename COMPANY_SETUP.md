@@ -126,7 +126,7 @@ uv sync
 
 ---
 
-## 3. config.py の記入（Fumio対応・必須）
+## 3. config.py の記入（API担当者対応・必須）
 
 `config.py` 冒頭の `BACKEND` を会社用に切り替える：
 
@@ -135,7 +135,7 @@ uv sync
 BACKEND = "aslead_chatbot"    # ← 会社はこれ
 ```
 
-次に「aslead chatbot APIサーバー」の値を記入（**TODO: Fumioが記入** の3箇所）：
+次に「aslead chatbot APIサーバー」の値を記入（**TODO: API担当者が記入** の3箇所）：
 
 ```python
 ASLEAD_BASE_URL    = "http://<社内APIサーバーのホスト:ポート>"
@@ -232,7 +232,7 @@ uv run python cli.py "育児休業は子供が何歳まで取れますか？"
 - 検索・リランクは正しいのに回答だけ崩れる場合の典型。
 - **原因1**：`config.py` の `ASLEAD_LIGHT_MODEL` と `ASLEAD_HEAVY_MODEL` が
   同じ値になっている → 必ず別の値にする。
-- **原因2（要Fumio確認）**：社内APIの裏のモデルが「思考(thinking)」を長文生成し
+- **原因2（要API担当者確認）**：社内APIの裏のモデルが「思考(thinking)」を長文生成し
   出力上限を食い潰している可能性。自宅llama-server構成では
   `chat_template_kwargs.enable_thinking=false` で解決したが、**aslead chatbot API側で
   同等の無効化が必要かは社内APIサーバー仕様の確認が必要**（§8）。
@@ -254,12 +254,12 @@ uv run python cli.py "育児休業は子供が何歳まで取れますか？"
 
 ---
 
-## 8. 既知の未確認事項（Fumio確認待ち）
+## 8. 既知の未確認事項（API担当者確認待ち）
 
 1. **中間ファイル渡しプロトコル**：`api_client.py` の `AsleadChatbotClient` は
    プロンプトが2000文字超のとき `file:./tmp_prompt.txt` 形式でパスを渡す想定。
    **実際の社内APIサーバーの受け取り仕様（キー名・パス形式）は要確認**
-   （コード内 `TODO: Fumioが確認` コメント箇所）。
+   （コード内 `TODO: API担当者が確認` コメント箇所）。
 2. **thinking挙動**：社内API裏のモデルが思考トークンを返すか、返す場合の
    無効化方法（リクエストパラメータ）は社内APIサーバー仕様の確認が必要。
    問題が出たら §7-B を参照しサーバー担当へ確認。

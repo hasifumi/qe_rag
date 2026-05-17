@@ -9,7 +9,7 @@ class AsleadChatbotClient:
     def chat(self, model: str, prompt: str) -> str:
         use_file = config.TMP_FILE and len(prompt) > 2000
         if use_file:
-            # TODO: 中間ファイル渡しの具体的プロトコルはFumioが確認
+            # TODO: 中間ファイル渡しの具体的プロトコルはAPI担当者が確認
             # 現状の想定: ファイルに書き出してパスをcontentに渡す
             Path(config.TMP_FILE).write_text(prompt, encoding="utf-8")
             messages = [{"role": "user", "content": f"file:{config.TMP_FILE}"}]

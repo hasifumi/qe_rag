@@ -67,12 +67,12 @@ uv add <package-name>
 - モデル選択可能：`LIGHT_MODEL`（クエリ拡張用）、`HEAVY_MODEL`（回答生成用）
 - **中間ファイル渡し機能**：長いプロンプトはファイルに書き出してパスを渡す（`file:./tmp_prompt.txt`形式）
   - `len(prompt) > 2000` のとき自動的に`use_file=True`
-  - 具体的プロトコルはFumioに要確認（`TODO: Fumioが確認`コメントで明示）
+  - 具体的プロトコルはAPI担当者に要確認（`TODO: API担当者が確認`コメントで明示）
 - Tool Use不使用
 
 ## 設定値（config.py）
 
-未記入のプレースホルダーはFumioが記入：
+未記入のプレースホルダーはAPI担当者が記入：
 - `API_BASE_URL`：改良版APIサーバーのURL
 - `LIGHT_MODEL`・`HEAVY_MODEL`：使用するモデル名
 

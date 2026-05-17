@@ -4,9 +4,9 @@
 BACKEND = "llama_server"    # 自宅（llama-server）
 
 # ===== aslead chatbot APIサーバー（会社用） =====
-ASLEAD_BASE_URL    = "http://localhost:XXXX"   # TODO: Fumioが記入
-ASLEAD_LIGHT_MODEL = "model-light"              # TODO: Fumioが記入
-ASLEAD_HEAVY_MODEL = "model-heavy"              # TODO: Fumioが記入
+ASLEAD_BASE_URL    = "http://localhost:XXXX"   # TODO: API担当者が記入
+ASLEAD_LIGHT_MODEL = "model-light"              # TODO: API担当者が記入
+ASLEAD_HEAVY_MODEL = "model-heavy"              # TODO: API担当者が記入
 ASLEAD_TMP_FILE    = "./tmp_prompt.txt"
 
 # ===== Ollama（自宅用） =====

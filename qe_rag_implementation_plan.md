@@ -163,7 +163,7 @@ def chat(model: str, prompt: str, use_file: bool = False) -> str:
 ```
 
 > **注意**: 中間ファイル渡しの具体的なプロトコルは改良版APIサーバーの実装に合わせること。
-> 実装者（Fumio）に確認して調整する。
+> 実装者（API担当者）に確認して調整する。
 
 ### ingest.py（文書取り込み）
 
@@ -297,8 +297,8 @@ requests>=2.31.0               # APIクライアント
 ## 実装フェーズ
 
 ### Phase 1（優先）：動くものを作る
-- [ ] `config.py` の作成（APIサーバーURLとモデル名はFumioが記入）
-- [ ] `api_client.py` の作成（中間ファイル渡しプロトコルはFumioが確認）
+- [ ] `config.py` の作成（APIサーバーURLとモデル名はAPI担当者が記入）
+- [ ] `api_client.py` の作成（中間ファイル渡しプロトコルはAPI担当者が確認）
 - [ ] `ingest.py` の作成（まずpptx対応のみでよい）
 - [ ] `pipeline.py` の作成
 - [ ] `cli.py` の作成
@@ -343,7 +343,7 @@ requests>=2.31.0               # APIクライアント
 - Embeddingは intfloat/multilingual-e5-small を使う（日本語対応、約120MB）
 - リランキングは cross-encoder/ms-marco-MiniLM-L-6-v2 を使う（約90MB）
 - LLMへのJSON出力指示は必ずフォールバック処理を入れること
-- 中間ファイル渡しの具体的プロトコルはコメントで「TODO: Fumioが確認」と記載
+- 中間ファイル渡しの具体的プロトコルはコメントで「TODO: API担当者が確認」と記載
 
 ## 参考にしたアーキテクチャ
 デジタル庁「源内」のクエリ拡張RAG（genai-ai-api）をローカル向けに移植したもの。
@@ -355,7 +355,7 @@ requests>=2.31.0               # APIクライアント
 ## 備考・決定事項メモ
 
 - 中間ファイル渡しのプロトコル詳細は改良版APIサーバーの実装を要確認
-- 改良版APIサーバーで使えるモデル名（LIGHT_MODEL/HEAVY_MODEL）はFumioが記入
+- 改良版APIサーバーで使えるモデル名（LIGHT_MODEL/HEAVY_MODEL）はAPI担当者が記入
 - Cross-Encoderは英語訓練モデルだが日本語でも実用レベルで動作する実績あり
 - sentence-transformersの初回ダウンロードはインターネット接続が必要（社内ブロック注意）
   → 事前にモデルファイルをダウンロードしてオフラインで使う方法も検討
