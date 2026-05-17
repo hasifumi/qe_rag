@@ -28,6 +28,10 @@
   #sources li { color: #555; font-size: .9rem; }
   .err { color: #dc2626; font-weight: 600; }
   section[hidden] { display: none; }
+  #files-list { margin:.3rem 0; padding-left:1.2rem; }
+  #files-list li { font-size:.9rem; color:#444; transition: background .2s; }
+  #files-list li.active { background:#2563eb22; font-weight:600; border-radius:3px;
+                          padding:0 .3rem; color:#1d4ed8; }
 </style>
 </head>
 <body>
@@ -47,6 +51,11 @@
     </label>
   </div>
 
+  <section id="files-box">
+    <h2>インデックス済みファイル <span id="files-count" style="font-weight:normal;font-size:.9rem;color:#888"></span></h2>
+    <ul id="files-list"></ul>
+  </section>
+
   <section id="progress-box" hidden>
     <h2>進捗</h2>
     <pre id="progress"></pre>
@@ -61,6 +70,24 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
+
+async function loadFiles(highlightSet = null) {
+  try {
+    const res = await fetch("/api/files");
+    if (!res.ok) return;
+    const { files } = await res.json();
+    $("files-count").textContent = `（${files.length} 件）`;
+    const list = $("files-list");
+    list.innerHTML = "";
+    for (const f of files) {
+      const li = document.createElement("li");
+      li.textContent = f.name;
+      li.dataset.file = f.file;
+      if (highlightSet && highlightSet.has(f.file)) li.classList.add("active");
+      list.appendChild(li);
+    }
+  } catch (_) {}
+}
 const askBtn = $("ask"), clearBtn = $("clear"), ingestBtn = $("ingest");
 const uploadBtn = $("uploadBtn"), fileInput = $("fileInput"), qBox = $("q");
 const progressBox = $("progress-box"), progressEl = $("progress");
@@ -161,6 +188,8 @@ async function doAsk() {
         answerBox.hidden = false;
         answerEl.textContent = evt.answer || "(回答なし)";
         renderSources(evt.sources);
+        const hl = new Set((evt.sources || []).map((s) => s.file));
+        loadFiles(hl);
       },
     });
   } catch (e) {
@@ -178,7 +207,7 @@ async function doIngest() {
     await streamPost("/api/ingest", null, {
       onProgress: (m) => logProgress(m),
       onError: (m) => logProgress(m, true),
-      onDone: (evt) => logProgress(evt.message || "完了"),
+      onDone: (evt) => { logProgress(evt.message || "完了"); loadFiles(); },
     });
   } catch (e) {
     logProgress(String(e), true);
@@ -199,7 +228,7 @@ async function doUpload() {
     await streamUpload("/api/upload", fd, {
       onProgress: (m) => logProgress(m),
       onError: (m) => logProgress(m, true),
-      onDone: (evt) => logProgress(evt.message || "完了"),
+      onDone: (evt) => { logProgress(evt.message || "完了"); loadFiles(); },
     });
   } catch (e) {
     logProgress(String(e), true);
@@ -220,6 +249,8 @@ fileInput.addEventListener("change", () => { if (fileInput.files.length > 0) doU
 qBox.addEventListener("keydown", (e) => {
   if (e.ctrlKey && e.key === "Enter") doAsk();
 });
+
+loadFiles();
 </script>
 </body>
 </html>

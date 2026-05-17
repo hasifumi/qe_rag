@@ -97,6 +97,22 @@ def api_ask(req: AskRequest):
     return StreamingResponse(_event_stream(target), media_type="text/event-stream")
 
 
+@app.get("/api/files")
+def api_files():
+    import pipeline
+
+    _, _, chroma = pipeline._get_resources()
+    col = chroma.get_or_create_collection("docs")
+    metas = col.get(include=["metadatas"])["metadatas"]
+    seen: dict[str, str] = {}
+    for m in metas:
+        f = m.get("file", "")
+        if f and f not in seen:
+            seen[f] = Path(f).name
+    files = [{"file": k, "name": v} for k, v in seen.items()]
+    return {"files": files}
+
+
 @app.post("/api/ingest")
 def api_ingest():
     import ingest
