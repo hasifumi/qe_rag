@@ -30,6 +30,17 @@ RERANK_MODEL = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
 DOCS_DIR = "./docs"
 DB_DIR   = "./db"
 
+# ===== 部署定義（サブフォルダ名 → 表示名） =====
+DEPARTMENTS = {
+    "hr":      "人事・労務",
+    "general": "総務",
+    "finance": "経理・財務",
+    "it":      "IT・システム",
+    "legal":   "法務・コンプライアンス",
+    "sales":   "営業",
+    "common":  "全社共通",
+}
+
 # ===== RAGパラメーター（共通） =====
 TOP_K_SEARCH   = 10
 TOP_K_RERANK   = 3

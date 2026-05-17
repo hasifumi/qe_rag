@@ -14,7 +14,7 @@ import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
@@ -36,6 +36,7 @@ app = FastAPI(title="QE-RAG Web UI", lifespan=lifespan)
 
 class AskRequest(BaseModel):
     question: str
+    department: str = "all"
 
 
 def _sse(payload: dict) -> str:
@@ -92,7 +93,7 @@ def api_ask(req: AskRequest):
         return StreamingResponse(empty(), media_type="text/event-stream")
 
     def target(report):
-        return pipeline.run(question, on_progress=report)
+        return pipeline.run(question, department=req.department, on_progress=report)
 
     return StreamingResponse(_event_stream(target), media_type="text/event-stream")
 
@@ -104,12 +105,12 @@ def api_files():
     _, _, chroma = pipeline._get_resources()
     col = chroma.get_or_create_collection("docs")
     metas = col.get(include=["metadatas"])["metadatas"]
-    seen: dict[str, str] = {}
+    seen: dict[str, dict] = {}
     for m in metas:
         f = m.get("file", "")
         if f and f not in seen:
-            seen[f] = Path(f).name
-    files = [{"file": k, "name": v} for k, v in seen.items()]
+            seen[f] = {"name": Path(f).name, "department": m.get("department", "common")}
+    files = [{"file": k, "name": v["name"], "department": v["department"]} for k, v in seen.items()]
     return {"files": files}
 
 
@@ -128,12 +129,12 @@ ALLOWED_EXTS = {".pptx", ".pdf", ".docx", ".txt", ".md"}
 
 
 @app.post("/api/upload")
-async def api_upload(files: list[UploadFile] = File(...)):
+async def api_upload(files: list[UploadFile] = File(...), department: str = Form("common")):
     import ingest as ingest_mod
     import config
 
-    docs_dir = Path(config.DOCS_DIR)
-    docs_dir.mkdir(parents=True, exist_ok=True)
+    target_dir = Path(config.DOCS_DIR) / department
+    target_dir.mkdir(parents=True, exist_ok=True)
 
     saved: list[str] = []
     skipped: list[str] = []
@@ -151,9 +152,9 @@ async def api_upload(files: list[UploadFile] = File(...)):
 
     def target(report):
         for name, data in file_contents:
-            dest = docs_dir / name
+            dest = target_dir / name
             dest.write_bytes(data)
-            report(f"  保存: {name}")
+            report(f"  保存: {name} → {department}/")
         for name in skipped:
             report(f"  スキップ（非対応形式）: {name}")
         if saved:

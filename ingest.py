@@ -119,6 +119,9 @@ def ingest(
             report(f"  スキップ（テキストなし）: {file_path.name}")
             continue
 
+        rel = file_path.relative_to(Path(docs_dir))
+        department = rel.parts[0] if len(rel.parts) > 1 else "common"
+
         ids, docs, metas = [], [], []
         for sec in sections:
             for chunk in _chunk_text(sec["text"]):
@@ -127,7 +130,7 @@ def ingest(
                 ).hexdigest()
                 ids.append(chunk_id)
                 docs.append(chunk)
-                meta = {"file": path_str, "mtime": mtime}
+                meta = {"file": path_str, "mtime": mtime, "department": department}
                 if "slide" in sec:
                     meta["slide"] = sec["slide"]
                 elif "page" in sec:

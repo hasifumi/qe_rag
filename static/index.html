@@ -42,10 +42,31 @@
       placeholder="質問を入力（例: 有給休暇の申請方法は？）&#10;Ctrl+Enter で送信"></textarea>
   </div>
   <div class="row">
+    <select id="deptFilter" style="font-size:1rem;padding:.45rem .6rem;border-radius:6px;border:1px solid #ccc;margin-right:.4rem">
+      <option value="all">全部署</option>
+      <option value="hr">人事・労務</option>
+      <option value="general">総務</option>
+      <option value="finance">経理・財務</option>
+      <option value="it">IT・システム</option>
+      <option value="legal">法務・コンプライアンス</option>
+      <option value="sales">営業</option>
+      <option value="common">全社共通</option>
+    </select>
     <button id="ask">質問する</button>
     <button id="clear" class="secondary">クリア</button>
+  </div>
+  <div class="row">
     <button id="ingest" class="secondary">再インデックス（更新・削除も反映）</button>
-    <label style="margin-left:.6rem">
+    <select id="uploadDept" style="font-size:1rem;padding:.45rem .6rem;border-radius:6px;border:1px solid #ccc;margin-left:.6rem">
+      <option value="common">全社共通</option>
+      <option value="hr">人事・労務</option>
+      <option value="general">総務</option>
+      <option value="finance">経理・財務</option>
+      <option value="it">IT・システム</option>
+      <option value="legal">法務・コンプライアンス</option>
+      <option value="sales">営業</option>
+    </select>
+    <label>
       <input type="file" id="fileInput" multiple accept=".pptx,.pdf,.docx,.txt,.md" style="display:none">
       <button id="uploadBtn" class="secondary" onclick="$('fileInput').click()">ファイルを追加</button>
     </label>
@@ -81,7 +102,7 @@ async function loadFiles(highlightSet = null) {
     list.innerHTML = "";
     for (const f of files) {
       const li = document.createElement("li");
-      li.textContent = f.name;
+      li.textContent = `[${f.department}] ${f.name}`;
       li.dataset.file = f.file;
       if (highlightSet && highlightSet.has(f.file)) li.classList.add("active");
       list.appendChild(li);
@@ -181,7 +202,7 @@ async function doAsk() {
   resetView();
   setBusy(true);
   try {
-    await streamPost("/api/ask", { question }, {
+    await streamPost("/api/ask", { question, department: $("deptFilter").value }, {
       onProgress: (m) => logProgress(m),
       onError: (m) => logProgress(m, true),
       onDone: (evt) => {
@@ -224,6 +245,7 @@ async function doUpload() {
   logProgress(`${fileList.length} ファイルをアップロード中...`);
   const fd = new FormData();
   for (const f of fileList) fd.append("files", f);
+  fd.append("department", $("uploadDept").value);
   try {
     await streamUpload("/api/upload", fd, {
       onProgress: (m) => logProgress(m),

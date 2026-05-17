@@ -48,13 +48,17 @@ def expand_query(question: str) -> list[str]:
     return [question]
 
 
-def search(queries: list[str], col) -> list[str]:
+def search(queries: list[str], col, department: str | None = None) -> list[str]:
     """② ベクトル検索（ローカル）"""
     embedder, _, _ = _get_resources()
     results = []
+    where = {"department": department} if department and department != "all" else None
     for q in queries:
         vec = embedder.encode(q).tolist()
-        hits = col.query(query_embeddings=[vec], n_results=config.TOP_K_SEARCH)
+        kwargs: dict = {"query_embeddings": [vec], "n_results": config.TOP_K_SEARCH}
+        if where:
+            kwargs["where"] = where
+        hits = col.query(**kwargs)
         results.extend(hits["documents"][0])
     return list(dict.fromkeys(results))
 
@@ -84,7 +88,7 @@ def generate_answer(question: str, chunks: list[str]) -> str:
     return chat(config.HEAVY_MODEL, prompt)
 
 
-def run(question: str, on_progress=None) -> dict:
+def run(question: str, department: str | None = None, on_progress=None) -> dict:
     """パイプライン全体を実行して回答と参照情報を返す
 
     on_progress: 進捗メッセージを受け取る callable（引数1: str）。
@@ -99,7 +103,7 @@ def run(question: str, on_progress=None) -> dict:
     queries = expand_query(question)
 
     report(f"[2/4] 検索中... ({len(queries)} クエリ)")
-    chunks = search(queries, col)
+    chunks = search(queries, col, department)
     report(f"      {len(chunks)} 件取得")
 
     report("[3/4] リランキング中...")
