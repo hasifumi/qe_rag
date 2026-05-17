@@ -1,13 +1,13 @@
 # ===== バックエンド選択（1行だけ書き換えて切り替える） =====
-# BACKEND = "nanchatte"     # 会社
-# BACKEND = "ollama"        # 自宅（Ollama）
-BACKEND = "llama_server"  # 自宅（llama-server）
+# BACKEND = "aslead_chatbot"  # 会社（aslead chatbot API経由）
+# BACKEND = "ollama"          # 自宅（Ollama）
+BACKEND = "llama_server"    # 自宅（llama-server）
 
-# ===== 改良版なんちゃってAPIサーバー（会社用） =====
-NANCHATTE_BASE_URL    = "http://localhost:XXXX"   # TODO: Fumioが記入
-NANCHATTE_LIGHT_MODEL = "model-light"              # TODO: Fumioが記入
-NANCHATTE_HEAVY_MODEL = "model-heavy"              # TODO: Fumioが記入
-NANCHATTE_TMP_FILE    = "./tmp_prompt.txt"
+# ===== aslead chatbot APIサーバー（会社用） =====
+ASLEAD_BASE_URL    = "http://localhost:XXXX"   # TODO: Fumioが記入
+ASLEAD_LIGHT_MODEL = "model-light"              # TODO: Fumioが記入
+ASLEAD_HEAVY_MODEL = "model-heavy"              # TODO: Fumioが記入
+ASLEAD_TMP_FILE    = "./tmp_prompt.txt"
 
 # ===== Ollama（自宅用） =====
 OLLAMA_BASE_URL       = "http://localhost:11434"
@@ -48,8 +48,8 @@ elif BACKEND == "llama_server":
     LIGHT_MODEL  = "light"
     HEAVY_MODEL  = "heavy"
     TMP_FILE     = None
-else:
-    API_BASE_URL = NANCHATTE_BASE_URL
-    LIGHT_MODEL  = NANCHATTE_LIGHT_MODEL
-    HEAVY_MODEL  = NANCHATTE_HEAVY_MODEL
-    TMP_FILE     = NANCHATTE_TMP_FILE
+else:  # "aslead_chatbot"
+    API_BASE_URL = ASLEAD_BASE_URL
+    LIGHT_MODEL  = ASLEAD_LIGHT_MODEL
+    HEAVY_MODEL  = ASLEAD_HEAVY_MODEL
+    TMP_FILE     = ASLEAD_TMP_FILE

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 社内文書向けQE-RAG（Query Expansion RAG）システム。デジタル庁「源内」のRAGアーキテクチャをローカル環境向けに移植したもの。
 
-**制約環境**：Windows、管理者権限なし、外部LLMサービスブロック済み。LLMは社内「改良版なんちゃってAPIサーバー」（OpenAI互換プロキシ）経由。
+**制約環境**：Windows、管理者権限なし、外部LLMサービスブロック済み。LLMは社内「aslead chatbot」APIサーバー（OpenAI互換プロキシ）経由。
 
 ## セットアップ・実行コマンド
 
@@ -61,7 +61,7 @@ uv add <package-name>
 - **Reranker**: `cross-encoder/ms-marco-MiniLM-L-6-v2`（約90MB、英語訓練だが日本語で実用レベル動作）
 - **ベクトルDB**: ChromaDB（永続化モード）
 
-### 改良版APIサーバーの特徴
+### aslead chatbot APIサーバーの特徴
 
 - OpenAI互換API（`/v1/chat/completions`）
 - モデル選択可能：`LIGHT_MODEL`（クエリ拡張用）、`HEAVY_MODEL`（回答生成用）

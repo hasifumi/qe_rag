@@ -3,8 +3,8 @@ from pathlib import Path
 import config
 
 
-class NanchatteClient:
-    """改良版なんちゃってAPIサーバー向けクライアント（中間ファイル渡し対応）"""
+class AsleadChatbotClient:
+    """aslead chatbot APIサーバー向けクライアント（中間ファイル渡し対応）"""
 
     def chat(self, model: str, prompt: str) -> str:
         use_file = config.TMP_FILE and len(prompt) > 2000
@@ -73,7 +73,7 @@ def get_client():
         return OllamaClient()
     if config.BACKEND == "llama_server":
         return LlamaServerClient()
-    return NanchatteClient()
+    return AsleadChatbotClient()  # "aslead_chatbot"
 
 
 def chat(model: str, prompt: str) -> str:

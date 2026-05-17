@@ -9,7 +9,7 @@
 | OS | Windows | PowerShell前提 |
 | 権限 | **管理者権限なし** | uvはユーザー領域インストール。ページングファイル変更不可（§7参照） |
 | ネットワーク | **外部LLM・外部サイトブロック済み** | HuggingFaceからモデルDL不可 → §2でキャッシュを事前持ち込み必須 |
-| LLM | 社内「改良版なんちゃってAPIサーバー」（OpenAI互換プロキシ） | `BACKEND="nanchatte"` を使用（§4） |
+| LLM | 社内「aslead chatbot」APIサーバー（OpenAI互換プロキシ） | `BACKEND="aslead_chatbot"` を使用（§4） |
 | ローカルモデル | Embedding / Reranker はCPUで動作（GPU不要） | 事前キャッシュさえあればオフラインで完結 |
 
 > ⚠️ **最重要**：`pipeline.py` は完全オフライン強制（`HF_HUB_OFFLINE=1`）で動く。
@@ -61,31 +61,46 @@ Compress-Archive -Path `
 
 ## 2. 会社PCでのセットアップ
 
-### 2-1. uv のインストール（管理者権限不要）
+### 2-1. uv の確認
 
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-> 社内ネットで上記URLもブロックされている場合は、ネット可能PCで uv の
-> スタンドアロン実行ファイルを入手し、`%USERPROFILE%\.local\bin\` に配置してPATHを通す。
-
-インストール確認：
+uv は導入済みの前提。念のため確認：
 
 ```powershell
 uv --version
 ```
 
-### 2-2. プロジェクト配置
-
-持ち込んだ `qe_rag` フォルダを任意の場所（例：`C:\Users\<自分>\project\qe_rag`）に展開。
-
-### 2-3. HFモデルキャッシュの配置
-
-§1-2 のZIPを会社PCの**ユーザープロファイル直下**へ展開：
+未インストールの場合（外部ネット不可なら自宅PCで入手してUSB持ち込み）：
 
 ```powershell
-$hub = "$env:USERPROFILE\.cache\huggingface\hub"
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+### 2-2. 環境変数の設定（C ドライブ非使用）
+
+会社PCはCドライブが読み取り専用のため、キャッシュ先をVドライブ（または書き込み可能なドライブ）へ向ける。
+PowerShellプロファイル（`notepad $PROFILE`）に以下を追加して保存：
+
+```powershell
+$env:UV_CACHE_DIR = "V:\uv_cache"
+$env:HF_HOME      = "V:\hf_models"
+```
+
+設定後、PowerShellを再起動して反映させること。
+
+### 2-3. プロジェクト配置
+
+持ち込んだ `qe_rag` フォルダを **Vドライブ**（または書き込み可能な場所）に展開：
+
+```
+V:\project\qe_rag\
+```
+
+### 2-4. HFモデルキャッシュの配置
+
+§1-2 のZIPを `HF_HOME` で指定したフォルダの `hub` サブフォルダへ展開：
+
+```powershell
+$hub = "$env:HF_HOME\hub"
 New-Item -ItemType Directory -Force $hub | Out-Null
 Expand-Archive -Path "<持ち込んだ>\hf_cache_qe_rag.zip" -DestinationPath $hub
 ```
@@ -93,11 +108,11 @@ Expand-Archive -Path "<持ち込んだ>\hf_cache_qe_rag.zip" -DestinationPath $h
 展開後、以下2フォルダが存在することを確認：
 
 ```powershell
-Get-ChildItem "$env:USERPROFILE\.cache\huggingface\hub" -Directory |
+Get-ChildItem "$env:HF_HOME\hub" -Directory |
   Where-Object Name -match 'multilingual-e5-small|mmarco-mMiniLMv2'
 ```
 
-### 2-4. 依存パッケージのインストール
+### 2-5. 依存パッケージのインストール
 
 プロジェクトフォルダで：
 
@@ -116,19 +131,19 @@ uv sync
 `config.py` 冒頭の `BACKEND` を会社用に切り替える：
 
 ```python
-# BACKEND = "llama_server"  # 自宅
-BACKEND = "nanchatte"       # ← 会社はこれ
+# BACKEND = "llama_server"    # 自宅
+BACKEND = "aslead_chatbot"    # ← 会社はこれ
 ```
 
-次に「改良版なんちゃってAPIサーバー」の値を記入（**TODO: Fumioが記入** の3箇所）：
+次に「aslead chatbot APIサーバー」の値を記入（**TODO: Fumioが記入** の3箇所）：
 
 ```python
-NANCHATTE_BASE_URL    = "http://<社内APIサーバーのホスト:ポート>"
-NANCHATTE_LIGHT_MODEL = "<クエリ拡張用の軽量モデル名>"
-NANCHATTE_HEAVY_MODEL = "<回答生成用の高性能モデル名>"
+ASLEAD_BASE_URL    = "http://<社内APIサーバーのホスト:ポート>"
+ASLEAD_LIGHT_MODEL = "<クエリ拡張用の軽量モデル名>"
+ASLEAD_HEAVY_MODEL = "<回答生成用の高性能モデル名>"
 ```
 
-> `NANCHATTE_LIGHT_MODEL` と `NANCHATTE_HEAVY_MODEL` は**必ず異なる文字列**にする
+> `ASLEAD_LIGHT_MODEL` と `ASLEAD_HEAVY_MODEL` は**必ず異なる文字列**にする
 > （同一値だと振り分けが壊れる。詳細は §7 既知の罠）。
 
 ---
@@ -215,19 +230,19 @@ uv run python cli.py "育児休業は子供が何歳まで取れますか？"
 ### B. 回答が空、または文脈に答えがあるのに「該当する情報が見つかりませんでした」
 
 - 検索・リランクは正しいのに回答だけ崩れる場合の典型。
-- **原因1**：`config.py` の `NANCHATTE_LIGHT_MODEL` と `NANCHATTE_HEAVY_MODEL` が
+- **原因1**：`config.py` の `ASLEAD_LIGHT_MODEL` と `ASLEAD_HEAVY_MODEL` が
   同じ値になっている → 必ず別の値にする。
 - **原因2（要Fumio確認）**：社内APIの裏のモデルが「思考(thinking)」を長文生成し
   出力上限を食い潰している可能性。自宅llama-server構成では
-  `chat_template_kwargs.enable_thinking=false` で解決したが、**なんちゃってAPI側で
+  `chat_template_kwargs.enable_thinking=false` で解決したが、**aslead chatbot API側で
   同等の無効化が必要かは社内APIサーバー仕様の確認が必要**（§8）。
 
 ### C. 社内APIに繋がらない
 
-- `NANCHATTE_BASE_URL` のホスト・ポートを確認。
+- `ASLEAD_BASE_URL` のホスト・ポートを確認。
 - 疎通確認：
   ```powershell
-  Invoke-WebRequest "$($url)/v1/models" -UseBasicParsing   # url は NANCHATTE_BASE_URL
+  Invoke-WebRequest "$($url)/v1/models" -UseBasicParsing   # url は ASLEAD_BASE_URL
   ```
 - VPN／社内ネットワーク内からのアクセスが必要な場合がある。
 
@@ -241,7 +256,7 @@ uv run python cli.py "育児休業は子供が何歳まで取れますか？"
 
 ## 8. 既知の未確認事項（Fumio確認待ち）
 
-1. **中間ファイル渡しプロトコル**：`api_client.py` の `NanchatteClient` は
+1. **中間ファイル渡しプロトコル**：`api_client.py` の `AsleadChatbotClient` は
    プロンプトが2000文字超のとき `file:./tmp_prompt.txt` 形式でパスを渡す想定。
    **実際の社内APIサーバーの受け取り仕様（キー名・パス形式）は要確認**
    （コード内 `TODO: Fumioが確認` コメント箇所）。
